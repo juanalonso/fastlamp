@@ -1,3 +1,6 @@
+//https://github.com/esp8266/arduino-esp8266fs-plugin
+
+
 //https://tttapa.github.io/ESP8266/Chap14%20-%20WebSocket.html
 
 #define FASTLED_ESP8266_D1_PIN_ORDER
@@ -8,6 +11,7 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 #include <ESP8266WebServer.h>
+#include <FS.h>
 
 const char *ssid = "Fastlamp";
 const char *password = "cucaracha";
@@ -27,6 +31,7 @@ ESP8266WebServer server(80);
 void setup() {
 
   initSerial();
+  initSPIFFS();
   initLeds();
   initRandomValues();
   initSoftAP();
@@ -35,10 +40,7 @@ void setup() {
   //initWebsocket();
 
   pinMode(LED_BUILTIN, OUTPUT);
-  for (int f = 0; f < 10; f++) {
-    digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
-    delay(500);
-  }
+  digitalWrite(LED_BUILTIN, HIGH);
 
 }
 
@@ -138,6 +140,10 @@ void initSerial() {
   Serial.begin(115200);
 }
 
+void initSPIFFS() {
+  SPIFFS.begin();
+}
+
 void initLeds() {
   LEDS.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
   LEDS.setBrightness(0);
@@ -153,17 +159,17 @@ void initRandomValues() {
 
 void initSoftAP() {
   WiFi.softAP(ssid, password);
-  Serial.print("Access point: ");
+  Serial.print("  Access point: ");
   Serial.println(ssid);
-  Serial.print("  IP address: ");
+  Serial.print("    IP address: ");
   Serial.println(WiFi.softAPIP());
 }
 
 void initmDNS() {
   if (!MDNS.begin(mdnsName)) {
-    Serial.println("Error setting up mDNS responder!");
+    Serial.println("*** Error setting up mDNS responder!");
   }
-  Serial.println("mDNS responder started");
+  Serial.println("mDNS responder: OK");
 }
 
 void initWebServer() {
@@ -171,7 +177,7 @@ void initWebServer() {
   server.on("/toggle", handleToggle);
   server.onNotFound(handleNotFound);
   server.begin();
-  Serial.println("HTTP server started");
+  Serial.println("   HTTP server: OK");
 }
 
 void initWebsocket() {
@@ -180,7 +186,14 @@ void initWebsocket() {
 }
 
 void handleRoot() {
-  server.send(200, "text/html", "<a href='/toggle'>Toggle LED</a>");
+  if (SPIFFS.exists("/index.html"))  {
+    File file = SPIFFS.open("/index.html", "r");
+    size_t sent = server.streamFile(file, "text/html");
+    file.close();
+  } else {
+    Serial.println("No encuentro index.html");
+    handleNotFound();
+  }
 }
 
 void handleToggle() {
