@@ -3,10 +3,10 @@
 
 //https://tttapa.github.io/ESP8266/Chap14%20-%20WebSocket.html
 
-#define FASTLED_ESP8266_D1_PIN_ORDER
+#define FASTLED_ESP8266_NODEMCU_PIN_ORDER
 #include <FastLED.h>
 #define NUM_LEDS 24
-#define DATA_PIN D8
+#define DATA_PIN 8
 
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
@@ -23,12 +23,17 @@ enum potType {
 
 CRGB leds[NUM_LEDS];
 uint32_t cx, cy, cz;
+int analogValue[6];
+boolean isStoppedHue = false;
 
 ESP8266WebServer server(80);
 //WebSocketsServer webSocket = WebSocketsServer(81);
 
 
 void setup() {
+
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, LOW);
 
   initSerial();
   initSPIFFS();
@@ -39,7 +44,6 @@ void setup() {
   initWebServer();
   //initWebsocket();
 
-  pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
 
 }
@@ -49,34 +53,32 @@ void loop() {
 
   server.handleClient();
 
-  /*
 
-    for (int f = 0; f < 6; f++) {
-    analogValue[f] = 1023 - analogRead(f);
-    }
+  //rotation va de 0x00 a 0xFFFF
+  static uint16_t rotation = 0;
 
-    //rotation va de 0 a 65k
-    static uint16_t rotation = 0;
+  //hue va de 0x00 a 0xFF
+  static uint8_t hue = 0;
 
-    static uint8_t hue = 0;
-
-    EVERY_N_MILLISECONDS(25) {
+  EVERY_N_MILLISECONDS(25) {
     rotation += map(analogValue[ROTATION], 0, 1000, 0, 1750);
-    }
+  }
 
-    EVERY_N_MILLISECONDS(100) {
-    hue += map(analogValue[HUE], 0, 1000, 0, 5);
+  EVERY_N_MILLISECONDS(100) {
+    if (!isStoppedHue) {
+      hue += map(analogValue[HUE], 0, 1000, 0, 5);
     }
+  }
 
-    EVERY_N_MILLISECONDS(50) {
+  EVERY_N_MILLISECONDS(50) {
     cz += map(analogValue[Z], 0, 1000, 0, 2500);
-    }
+  }
 
-    EVERY_N_MILLISECONDS(100) {
+  EVERY_N_MILLISECONDS(100) {
     LEDS.setBrightness(map(analogValue[BRIGHTNESS], 0, 1020, 5, 250));
-    }
+  }
 
-    for (int pixel = 0; pixel < NUM_LEDS; pixel++) {
+  for (int pixel = 0; pixel < NUM_LEDS; pixel++) {
 
     //ledAngle convierte 0..NUM_LEDS en 0..0xFFFF
     //y así ya tenemos rotation y ledAngle en la misma escala
@@ -97,10 +99,10 @@ void loop() {
 
     leds[pixel] = CHSV(noiseH + hue, map(analogValue[SATURATION], 0, 1000, 0, 250), 255);
 
-    }
+  }
 
-    LEDS.show();
-  */
+  LEDS.show();
+
 
 }
 /*
@@ -142,6 +144,17 @@ void initSerial() {
 
 void initSPIFFS() {
   SPIFFS.begin();
+  Serial.println("File list:");
+  String str = "";
+  Dir dir = SPIFFS.openDir("/");
+  while (dir.next()) {
+    str += "    ";
+    str += dir.fileName();
+    str += " / ";
+    str += dir.fileSize();
+    str += "\r\n";
+  }
+  Serial.print(str);
 }
 
 void initLeds() {
@@ -150,11 +163,22 @@ void initLeds() {
 }
 
 void initRandomValues() {
+
   random16_set_seed(8934);
   random16_add_entropy(analogRead(A0));
   cx = random16();
   cy = random16();
   cz = random16();
+
+  analogValue[ROTATION] = random(500);
+  analogValue[HUE] = random(500);
+  analogValue[Z] = random(500);
+  analogValue[RADIUS] = random(500);
+  analogValue[BRIGHTNESS] = 500;
+  analogValue[SATURATION] = 1023;
+
+  isStoppedHue = false;
+
 }
 
 void initSoftAP() {
@@ -190,8 +214,15 @@ void handleRequests() {
   Serial.print("Request: ");
   Serial.println(filename);
 
-  if (filename == "/toggle") {
-    digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+  if (filename == "/random") {
+    initRandomValues();
+    server.sendHeader("Location", "/");
+    server.send(303);
+    return;
+  }
+
+  if (filename == "/stophue") {
+    isStoppedHue = !isStoppedHue;
     server.sendHeader("Location", "/");
     server.send(303);
     return;
@@ -209,10 +240,15 @@ bool handleFileRead(String path) {
     path += "index.html";
   }
 
-  if (!path.startsWith("/")){
+  if (!path.startsWith("/")) {
     path = "/" + path;
   }
 
+  /*
+  Serial.print("   Path: ");
+  Serial.println(path);
+  */
+  
   String contentType = getContentType(path);
 
   if (SPIFFS.exists(path)) {
@@ -222,7 +258,7 @@ bool handleFileRead(String path) {
     return true;
   }
 
-  Serial.println("file not found");
+  Serial.println("      ** File not found");
   return false;
 }
 
