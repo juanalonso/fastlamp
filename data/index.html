@@ -1,6 +1,56 @@
+<!DOCTYPE html>
 <html>
-	<head></head>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Fastlamp</title>
+		<link rel="stylesheet" href="css/bulma.min.css">
+		<style type="text/css">
+			.bd-lead {padding: 1rem;}
+			.hero-body{padding: 1.5rem 1rem;}
+		</style>
+	</head>
 	<body>
-    	<a href='/toggle'>Toggle LED (SPIFFS)</a>	
+		<section class="hero is-info">
+			<div class="hero-body">
+				<h1 class="title">
+				Fastlamp
+				</h1>
+			</div>
+		</section>
+		<div class="bd-lead">
+			<div class="columns">
+				<div class="column">
+					<p class="heading">Giro</p>
+					<input type="range" min="1" max="100" value="50" class="slider" id="" style="width: 100%">
+				</div>
+				<div class="column">
+					<p class="heading">Color</p>
+					<input type="range" min="1" max="100" value="50" class="slider" id="" style="width: 100%">
+				</div>
+				<div class="column">
+					<p class="heading">Avance</p>
+					<input type="range" min="1" max="100" value="50" class="slider" id="" style="width: 100%">
+				</div>
+				<div class="column">
+					<p class="heading">Radio</p>
+					<input type="range" min="1" max="100" value="50" class="slider" id="" style="width: 100%">
+				</div>
+				<div class="column">
+					<p class="heading">Brillo</p>
+					<input type="range" min="1" max="100" value="50" class="slider" id="" style="width: 100%">
+				</div>
+				<div class="column">
+					<p class="heading">Saturación</p>
+					<input type="range" min="1" max="100" value="50" class="slider" id="" style="width: 100%">
+				</div>
+				<div class="column">
+					<a class="button is-warning" style="width: 100%">Random</a>
+				</div>
+				<div class="column">
+					<a class="button is-primary" style="width: 100%">Stop</a>
+				</div>
+			</div>
+		</div>
 	</body>
 </html>

@@ -1,5 +1,5 @@
 //https://github.com/esp8266/arduino-esp8266fs-plugin
-
+//https://bulma.io
 
 //https://tttapa.github.io/ESP8266/Chap14%20-%20WebSocket.html
 
@@ -173,9 +173,7 @@ void initmDNS() {
 }
 
 void initWebServer() {
-  server.on("/", handleRoot);
-  server.on("/toggle", handleToggle);
-  server.onNotFound(handleNotFound);
+  server.onNotFound(handleRequests);
   server.begin();
   Serial.println("   HTTP server: OK");
 }
@@ -185,24 +183,59 @@ void initWebsocket() {
   //webSocket.onEvent(webSocketEvent);
 }
 
-void handleRoot() {
-  if (SPIFFS.exists("/index.html"))  {
-    File file = SPIFFS.open("/index.html", "r");
-    size_t sent = server.streamFile(file, "text/html");
-    file.close();
-  } else {
-    Serial.println("No encuentro index.html");
-    handleNotFound();
+void handleRequests() {
+
+  String filename = server.uri();
+
+  Serial.print("Request: ");
+  Serial.println(filename);
+
+  if (filename == "/toggle") {
+    digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+    server.sendHeader("Location", "/");
+    server.send(303);
+    return;
+  }
+
+  if (!handleFileRead(filename))  {
+    server.send(404, "text/plain", "404: Not found");
   }
 }
 
-void handleToggle() {
-  digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
-  server.sendHeader("Location", "/");
-  server.send(303);
+
+bool handleFileRead(String path) {
+
+  if (path.endsWith("/")) {
+    path += "index.html";
+  }
+
+  if (!path.startsWith("/")){
+    path = "/" + path;
+  }
+
+  String contentType = getContentType(path);
+
+  if (SPIFFS.exists(path)) {
+    File file = SPIFFS.open(path, "r");
+    size_t sent = server.streamFile(file, contentType);
+    file.close();
+    return true;
+  }
+
+  Serial.println("file not found");
+  return false;
 }
 
-void handleNotFound() {
-  server.send(404, "text/plain", "404: Not found");
+
+String getContentType(String filename) {
+  if (filename.endsWith(".html")) return "text/html";
+  else if (filename.endsWith(".css")) return "text/css";
+  else if (filename.endsWith(".js")) return "application/javascript";
+  else if (filename.endsWith(".png")) return "image/png";
+  else if (filename.endsWith(".gif")) return "image/gif";
+  else if (filename.endsWith(".jpg")) return "image/jpeg";
+  else if (filename.endsWith(".ico")) return "image/x-icon";
+  return "text/plain";
 }
+
 
