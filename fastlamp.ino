@@ -6,7 +6,7 @@
 #define FASTLED_ESP8266_NODEMCU_PIN_ORDER
 #include <FastLED.h>
 #define NUM_LEDS 24
-#define DATA_PIN 8
+#define DATA_PIN 4
 
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
@@ -18,7 +18,7 @@ const char *password = "cucaracha";
 const char *mdnsName = "lamp";
 
 enum potType {
-  ROTATION, HUE, Z, RADIUS, BRIGHTNESS, SATURATION
+  ROTATION, HUE, DELTAZ, RADIUS, BRIGHTNESS, SATURATION
 };
 
 CRGB leds[NUM_LEDS];
@@ -71,7 +71,7 @@ void loop() {
   }
 
   EVERY_N_MILLISECONDS(50) {
-    cz += map(analogValue[Z], 0, 1000, 0, 2500);
+    cz += map(analogValue[DELTAZ], 0, 1000, 0, 2500);
   }
 
   EVERY_N_MILLISECONDS(100) {
@@ -172,9 +172,9 @@ void initRandomValues() {
 
   analogValue[ROTATION] = random(500);
   analogValue[HUE] = random(500);
-  analogValue[Z] = random(500);
+  analogValue[DELTAZ] = random(500);
   analogValue[RADIUS] = random(500);
-  analogValue[BRIGHTNESS] = 500;
+  analogValue[BRIGHTNESS] = 1000;
   analogValue[SATURATION] = 1023;
 
   isStoppedHue = false;
