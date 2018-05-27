@@ -5,6 +5,7 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<title>Fastlamp</title>
 		<link rel="stylesheet" href="css/bulma.min.css">
+		<script src="js/WebSocket.js" type="text/javascript"></script>
 		<style type="text/css">
 			.bd-lead {padding: 1rem;}
 			.hero-body{padding: 1.5rem 1rem;}
@@ -22,28 +23,30 @@
 			<div class="columns">
 				<div class="column">
 					<p class="heading">Giro</p>
-					<input type="range" min="1" max="100" value="50" class="slider" id="" style="width: 100%">
+					<input type="range" min="0" max="1023" step="1" value="512" oninput="sendSliderData(1);" class="slider" id="sl_1" style="width: 100%">
 				</div>
 				<div class="column">
 					<p class="heading">Color</p>
-					<input type="range" min="1" max="100" value="50" class="slider" id="" style="width: 100%">
+					<input type="range" min="0" max="1023" step="1" value="512" oninput="sendSliderData(2);" class="slider" id="sl_2" style="width: 100%">
 				</div>
 				<div class="column">
 					<p class="heading">Avance</p>
-					<input type="range" min="1" max="100" value="50" class="slider" id="" style="width: 100%">
+					<input type="range" min="0" max="1023" step="1" value="512" oninput="sendSliderData(3);" class="slider" id="sl_3" style="width: 100%">
 				</div>
 				<div class="column">
 					<p class="heading">Radio</p>
-					<input type="range" min="1" max="100" value="50" class="slider" id="" style="width: 100%">
+					<input type="range" min="0" max="1023" step="1" value="512" oninput="sendSliderData(4);" class="slider" id="sl_4" style="width: 100%">
 				</div>
 				<div class="column">
 					<p class="heading">Brillo</p>
-					<input type="range" min="1" max="100" value="50" class="slider" id="" style="width: 100%">
+					<input type="range" min="0" max="1023" step="1" value="512" oninput="sendSliderData(5);" class="slider" id="sl_5" style="width: 100%">
 				</div>
+				<!--
 				<div class="column">
 					<p class="heading">Saturación</p>
-					<input type="range" min="1" max="100" value="50" class="slider" id="" style="width: 100%">
+					<input type="range" min="0" max="1023" step="1" value="512" oninput="sendSliderData(6);" class="slider" id="sl_6" style="width: 100%">
 				</div>
+				-->
 				<div class="column">
 					<a class="button is-warning" style="width: 100%" href="/random">Al azar</a>
 				</div>

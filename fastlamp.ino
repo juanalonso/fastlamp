@@ -12,6 +12,7 @@
 #include <ESP8266mDNS.h>
 #include <ESP8266WebServer.h>
 #include <FS.h>
+#include <WebSocketsServer.h>
 
 const char *ssid = "Fastlamp";
 const char *password = "cucaracha";
@@ -27,13 +28,13 @@ int analogValue[6];
 boolean isStoppedHue = false;
 
 ESP8266WebServer server(80);
-//WebSocketsServer webSocket = WebSocketsServer(81);
+WebSocketsServer webSocket = WebSocketsServer(81);
 
 
 void setup() {
 
-  pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, LOW);
+  //pinMode(LED_BUILTIN, OUTPUT);
+  //digitalWrite(LED_BUILTIN, LOW);
 
   initSerial();
   initSPIFFS();
@@ -42,17 +43,17 @@ void setup() {
   initSoftAP();
   initmDNS();
   initWebServer();
-  //initWebsocket();
+  initWebsocket();
 
-  digitalWrite(LED_BUILTIN, HIGH);
+  //digitalWrite(LED_BUILTIN, HIGH);
 
 }
 
 
 void loop() {
 
+  webSocket.loop();
   server.handleClient();
-
 
   //rotation va de 0x00 a 0xFFFF
   static uint16_t rotation = 0;
@@ -97,7 +98,8 @@ void loop() {
     uint8_t noiseH = inoise16(x, y, cz) >> 8;
     uint8_t noiseV = inoise16(y, x, cz) >> 8;
 
-    leds[pixel] = CHSV(noiseH + hue, map(analogValue[SATURATION], 0, 1000, 0, 250), 255);
+    leds[pixel] = CHSV(noiseH + hue, 255, 255);
+    //map(analogValue[SATURATION], 0, 1000, 0, 250);
 
   }
 
@@ -105,46 +107,70 @@ void loop() {
 
 
 }
-/*
-  void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght) { // When a WebSocket message is received
-  switch (type) {
-    case WStype_DISCONNECTED:             // if the websocket is disconnected
-      Serial.printf("[%u] Disconnected!\n", num);
-      break;
-    case WStype_CONNECTED: {              // if a new websocket connection is established
-        IPAddress ip = webSocket.remoteIP(num);
-        Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", num, ip[0], ip[1], ip[2], ip[3], payload);
-        //rainbow = false;                  // Turn rainbow off when a new connection is established
-      }
-      break;
-    case WStype_TEXT:                     // if new text data is received
-      Serial.printf("[%u] get Text: %s\n", num, payload);
-      if (payload[0] == '#') {            // we get RGB data
-        uint32_t rgb = (uint32_t) strtol((const char *) &payload[1], NULL, 16);   // decode rgb data
-        int r = ((rgb >> 20) & 0x3FF);                     // 10 bits per color, so R: bits 20-29
-        int g = ((rgb >> 10) & 0x3FF);                     // G: bits 10-19
-        int b =          rgb & 0x3FF;                      // B: bits  0-9
 
-        //analogWrite(LED_RED,   r);                         // write it to the LED output pins
-        //analogWrite(LED_GREEN, g);
-        //analogWrite(LED_BLUE,  b);
-      } else if (payload[0] == 'R') {                      // the browser sends an R when the rainbow effect is enabled
-        //rainbow = true;
-      } else if (payload[0] == 'N') {                      // the browser sends an N when the rainbow effect is disabled
-        //rainbow = false;
+void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght) {
+
+  Serial.print("Evento ");
+  switch (type) {
+
+    case WStype_CONNECTED: {
+        IPAddress ip = webSocket.remoteIP(num);
+        Serial.printf("WS    Connected from %d.%d.%d.%d url: %s\n", ip[0], ip[1], ip[2], ip[3], payload);
+        break;
+      }
+
+    case WStype_TEXT:
+      if (payload[0] == '#' && lenght >= 4 && payload[1] >= '1' && payload[1] <= '6') {
+        uint16_t value = (uint16_t) strtol((const char *) &payload[3], NULL, 10);
+        analogValue[payload[1] - 49] = value;
+      } else {
+        Serial.println("WStype_TEXT");
+        Serial.printf("    %s\n", payload);
       }
       break;
+    case WStype_ERROR:
+      Serial.println("WS .   WStype_ERROR");
+      break;
+    case WStype_DISCONNECTED:
+      Serial.println("WS    Disconnected\n");
+      break;
   }
-  }
-*/
+
+
+
+  /*
+    switch (type) {
+
+    case WStype_TEXT:                     // if new text data is received
+    Serial.printf("[ %u] get Text: %s\n", num, payload);
+    if (payload[0] == '#') {            // we get RGB data
+    uint32_t rgb = (uint32_t) strtol((const char *) &payload[1], NULL, 16);   // decode rgb data
+    int r = ((rgb >> 20) & 0x3FF);                     // 10 bits per color, so R: bits 20-29
+    int g = ((rgb >> 10) & 0x3FF);                     // G: bits 10-19
+    int b =          rgb & 0x3FF;                      // B: bits  0-9
+
+    //analogWrite(LED_RED,   r);                         // write it to the LED output pins
+    //analogWrite(LED_GREEN, g);
+    //analogWrite(LED_BLUE,  b);
+    } else if (payload[0] == 'R') {                      // the browser sends an R when the rainbow effect is enabled
+    //rainbow = true;
+    } else if (payload[0] == 'N') {                      // the browser sends an N when the rainbow effect is disabled
+    //rainbow = false;
+    }
+    break;
+    }
+  */
+}
+
 
 void initSerial() {
   Serial.begin(115200);
 }
 
+
 void initSPIFFS() {
   SPIFFS.begin();
-  Serial.println("File list:");
+  Serial.println("File list: ");
   String str = "";
   Dir dir = SPIFFS.openDir("/");
   while (dir.next()) {
@@ -157,10 +183,12 @@ void initSPIFFS() {
   Serial.print(str);
 }
 
+
 void initLeds() {
   LEDS.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
   LEDS.setBrightness(0);
 }
+
 
 void initRandomValues() {
 
@@ -181,11 +209,12 @@ void initRandomValues() {
 
 }
 
+
 void initSoftAP() {
   WiFi.softAP(ssid, password);
-  Serial.print("  Access point: ");
+  Serial.print("    Access point: ");
   Serial.println(ssid);
-  Serial.print("    IP address: ");
+  Serial.print("      IP address: ");
   Serial.println(WiFi.softAPIP());
 }
 
@@ -193,19 +222,24 @@ void initmDNS() {
   if (!MDNS.begin(mdnsName)) {
     Serial.println("*** Error setting up mDNS responder!");
   }
-  Serial.println("mDNS responder: OK");
+  Serial.println("  mDNS responder: OK");
 }
+
 
 void initWebServer() {
   server.onNotFound(handleRequests);
   server.begin();
-  Serial.println("   HTTP server: OK");
+  Serial.println("     HTTP server: OK");
 }
 
+
 void initWebsocket() {
-  //webSocket.begin();
-  //webSocket.onEvent(webSocketEvent);
+  webSocket.begin();
+  webSocket.onEvent(webSocketEvent);
+  Serial.println("Websocket server: OK");
+
 }
+
 
 void handleRequests() {
 
@@ -245,10 +279,10 @@ bool handleFileRead(String path) {
   }
 
   /*
-  Serial.print("   Path: ");
-  Serial.println(path);
+    Serial.print("   Path: ");
+    Serial.println(path);
   */
-  
+
   String contentType = getContentType(path);
 
   if (SPIFFS.exists(path)) {
