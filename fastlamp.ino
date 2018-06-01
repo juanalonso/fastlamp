@@ -110,19 +110,26 @@ void loop() {
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght) {
 
-  Serial.print("Evento ");
   switch (type) {
 
     case WStype_CONNECTED: {
         IPAddress ip = webSocket.remoteIP(num);
         Serial.printf("WS    Connected from %d.%d.%d.%d url: %s\n", ip[0], ip[1], ip[2], ip[3], payload);
+        sendValuesToBrowser(num);
         break;
       }
 
     case WStype_TEXT:
-      if (payload[0] == '#' && lenght >= 4 && payload[1] >= '1' && payload[1] <= '6') {
-        uint16_t value = (uint16_t) strtol((const char *) &payload[3], NULL, 10);
-        analogValue[payload[1] - 49] = value;
+      if (payload[0] == '#') {
+        if (lenght >= 4 && payload[1] >= '1' && payload[1] <= '6') {
+          uint16_t value = (uint16_t) strtol((const char *) &payload[3], NULL, 10);
+          analogValue[payload[1] - 49] = value;
+        }
+      } else if  (payload[0] == 'R') {
+        initRandomValues();
+        sendValuesToBrowser(num);
+      } else if (payload[0] == 'S') {
+        isStoppedHue = !isStoppedHue;
       } else {
         Serial.println("WStype_TEXT");
         Serial.printf("    %s\n", payload);
@@ -138,28 +145,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
 
 
 
-  /*
-    switch (type) {
-
-    case WStype_TEXT:                     // if new text data is received
-    Serial.printf("[ %u] get Text: %s\n", num, payload);
-    if (payload[0] == '#') {            // we get RGB data
-    uint32_t rgb = (uint32_t) strtol((const char *) &payload[1], NULL, 16);   // decode rgb data
-    int r = ((rgb >> 20) & 0x3FF);                     // 10 bits per color, so R: bits 20-29
-    int g = ((rgb >> 10) & 0x3FF);                     // G: bits 10-19
-    int b =          rgb & 0x3FF;                      // B: bits  0-9
-
-    //analogWrite(LED_RED,   r);                         // write it to the LED output pins
-    //analogWrite(LED_GREEN, g);
-    //analogWrite(LED_BLUE,  b);
-    } else if (payload[0] == 'R') {                      // the browser sends an R when the rainbow effect is enabled
-    //rainbow = true;
-    } else if (payload[0] == 'N') {                      // the browser sends an N when the rainbow effect is disabled
-    //rainbow = false;
-    }
-    break;
-    }
-  */
 }
 
 
@@ -198,11 +183,11 @@ void initRandomValues() {
   cy = random16();
   cz = random16();
 
-  analogValue[ROTATION] = random(500);
-  analogValue[HUE] = random(500);
-  analogValue[DELTAZ] = random(500);
-  analogValue[RADIUS] = random(500);
-  analogValue[BRIGHTNESS] = 1000;
+  analogValue[ROTATION] = random(1023);
+  analogValue[HUE] = random(1023);
+  analogValue[DELTAZ] = random(1023);
+  analogValue[RADIUS] = random(1023);
+  analogValue[BRIGHTNESS] = 1023;
   analogValue[SATURATION] = 1023;
 
   isStoppedHue = false;
@@ -247,20 +232,6 @@ void handleRequests() {
 
   Serial.print("Request: ");
   Serial.println(filename);
-
-  if (filename == "/random") {
-    initRandomValues();
-    server.sendHeader("Location", "/");
-    server.send(303);
-    return;
-  }
-
-  if (filename == "/stophue") {
-    isStoppedHue = !isStoppedHue;
-    server.sendHeader("Location", "/");
-    server.send(303);
-    return;
-  }
 
   if (!handleFileRead(filename))  {
     server.send(404, "text/plain", "404: Not found");
@@ -308,4 +279,12 @@ String getContentType(String filename) {
   return "text/plain";
 }
 
+
+void sendValuesToBrowser(uint8_t num) {
+  String sliderValues = "";
+  for (int f = 0; f < 5; f++) {
+    sliderValues += String(analogValue[f]) + (f < 4 ? "_" : "");
+  }
+  webSocket.sendTXT(num, sliderValues);
+}
 

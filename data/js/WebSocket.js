@@ -11,6 +11,10 @@ connection.onerror = function (error) {
 
 connection.onmessage = function (e) {
   console.log('Server: ', e.data);
+  var values = e.data.split("_");
+  for (f=1; f<=values.length; f++) {
+  	document.getElementById('sl_'+f).value = values[f-1];
+	}
 };
 
 connection.onclose = function () {
@@ -19,4 +23,8 @@ connection.onclose = function () {
 
 function sendSliderData(element_id) {
 	connection.send('#' + element_id + '_' + document.getElementById('sl_'+element_id).value.toString());
+}
+
+function sendButtonData(data) {
+	connection.send(data);
 }
